@@ -1,7 +1,5 @@
 require("dotenv").config();
 const { Client, Collection, GatewayIntentBits, Events } = require("discord.js");
-const axios = require("axios");
-const {post} = require("axios");
 const { token } = require("./config.json");
 const fs = require('node:fs');
 const path = require('node:path');
@@ -25,35 +23,37 @@ for (const file of commandFiles) {
     client.commands.set(command.data.name, command);
 }
 
-const savedMessages = [];
-
 client.on(Events.InteractionCreate, async interaction => {
-    if (!interaction.isChatInputCommand()) return;
-
-    const command = client.commands.get(interaction.commandName);
-
-    if (!command) return;
-
     try {
-        await command.execute(interaction);
+        if (interaction.isChatInputCommand()) {
+            const command = client.commands.get(interaction.commandName);
+            if (!command) return;
+
+            await command.execute(interaction);
+        } else if (interaction.isMessageContextMenuCommand()) {
+            const command = client.commands.get(interaction.commandName);
+            if (!command) return;
+
+            await command.execute(interaction);
+        }
     } catch (error) {
         console.error(error);
-        await interaction.reply({ content: '❌ Erreur lors de l’exécution de cette commande.', ephemeral: true });
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply({ content: '❌ Erreur lors de l’exécution de cette commande.' });
+        } else {
+            await interaction.reply({ content: '❌ Erreur lors de l’exécution de cette commande.', ephemeral: true });
+        }
     }
 });
 
 client.on(Events.MessageCreate, async message => {
-    // Commande pour shutdown le bot
     if (message.content === '!shutdown') {
         await message.reply("🚧  Swappy s'est éteint...  🚧");
-        console.log("⛔ Swappy est déconnecter")
+        console.log("⛔ Swappy est déconnecté");
         await client.destroy();
         process.exit(0);
     }
-})
+});
 
-
-// Pour ce connecter au TOKEN du BOT
 console.log("⚡ Swappy démarre !");
 client.login(token);
-
